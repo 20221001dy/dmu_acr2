@@ -139,7 +139,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                    // 네트워크 실패 처리 aaaaaa
+                    // 네트워크 실패 처리
                     Log.e("ACRCloudResponse", "Network Error: ${t.message}")  // 오류 로그 출력
                 }
             })
