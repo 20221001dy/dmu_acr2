@@ -69,7 +69,7 @@ class MainActivity : AppCompatActivity() {
     @Suppress("DEPRECATION")
     private fun startRecording() {
         // 녹음 파일 경로 설정
-        outputFile = "${externalCacheDir?.absolutePath}/audio_record.3gp"
+        outputFile = "${externalCacheDir?.absolutePath}/audio_record.amr"
         mediaRecorder = MediaRecorder().apply {
             setAudioSource(MediaRecorder.AudioSource.MIC) // 마이크 소스 설정
             setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP) // 파일 형식 설정
@@ -116,7 +116,7 @@ class MainActivity : AppCompatActivity() {
         val file = File(audioFile)
 
         // 'toMediaType()'를 사용하여 MediaType 생성
-        val mediaType = "audio/3gp".toMediaType()
+        val mediaType = "audio/amr".toMediaType()
 
         // File을 InputStream으로 읽고 ByteArray로 변환 후, toRequestBody() 사용
         val fileInputStream = file.inputStream()
@@ -124,7 +124,7 @@ class MainActivity : AppCompatActivity() {
         val requestBody = byteArray.toRequestBody(mediaType)
 
         // API 요청 보내기
-        val authorizationHeader = "f097c66b65b074195d647b51a2251dd1Y" // 실제 API 키로 변경
+        val authorizationHeader = "f097c66b65b074195d647b51a2251dd1" // 실제 API 키로 변경
         RetrofitClient.instance.identifySong(authorizationHeader, requestBody)
             .enqueue(object : Callback<ResponseBody> {
                 override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
