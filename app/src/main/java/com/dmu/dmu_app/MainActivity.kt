@@ -11,9 +11,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
@@ -21,7 +19,6 @@ import retrofit2.Response
 import java.io.File
 import java.io.IOException
 import com.dmu.dmu_app.network.RetrofitClient
-import com.dmu.dmu_app.network.ACRCloudApi
 
 class MainActivity : AppCompatActivity() {
     private var mediaRecorder: MediaRecorder? = null
@@ -35,12 +32,12 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        Log.d("DebugCheck", "앱이 시작됨!")
+
         btnRecord = findViewById(R.id.btnRecord)
 
-        // 마이크 권한 확인
         checkPermissions()
 
-        // 녹음 버튼 클릭시 녹음 시작 or 중지
         btnRecord.setOnClickListener {
             if (isRecording) {
                 stopRecording()
@@ -50,7 +47,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 마이크 권한 확인 및 요청
     private fun checkPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -59,7 +55,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 권한 요청 후 결과 처리
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_PERMISSION_CODE) {
@@ -69,9 +64,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @Suppress("DEPRECATION")
     private fun startRecording() {
-        // 녹음 파일 경로 설정
         outputFile = "${externalCacheDir?.absolutePath}/audio_record.amr"
         mediaRecorder = MediaRecorder().apply {
             setAudioSource(MediaRecorder.AudioSource.MIC)
@@ -91,42 +84,37 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopRecording() {
-        if (mediaRecorder != null) {
-            try {
-                mediaRecorder?.stop()
-            } catch (e: IllegalStateException) {
-                Log.e("RecordingError", "Error stopping the recording: ${e.message}")
-                e.printStackTrace()
-            } finally {
-                mediaRecorder?.release()
-                mediaRecorder = null
-            }
+        try {
+            mediaRecorder?.stop()
+        } catch (e: IllegalStateException) {
+            Log.e("RecordingError", "Error stopping the recording: ${e.message}")
+            e.printStackTrace()
+        } finally {
+            mediaRecorder?.release()
+            mediaRecorder = null
+        }
 
-            isRecording = false
-            btnRecord.text = "녹음 시작"
+        isRecording = false
+        btnRecord.text = "녹음 시작"
 
-            // 녹음이 끝난 후, ACR Cloud API에 요청 보내기
-            outputFile?.let {
-                sendAudioToACRCloud(it)
-            }
-        } else {
-            Log.e("RecordingError", "MediaRecorder is null")
+        outputFile?.let {
+            sendAudioToACRCloud(it)
         }
     }
 
     private fun sendAudioToACRCloud(audioFile: String) {
         val file = File(audioFile)
-
-        // 파일을 multipart/form-data로 변환
         val requestFile = file.asRequestBody("audio/amr".toMediaType())
         val audioPart = MultipartBody.Part.createFormData("sample", file.name, requestFile)
 
-        // 기타 필드도 RequestBody로 생성
-        val accessKey = "YOUR_ACCESS_KEY".toRequestBody("text/plain".toMediaType())
-        val dataType = "audio".toRequestBody("text/plain".toMediaType())
+        val accessKeyPart = MultipartBody.Part.createFormData("access_key", "f097c66b65b074195d647b51a2251dd1")
 
-        // API 요청 보내기
-        RetrofitClient.instance.identifySong(accessKey, audioPart)
+        // 디버깅을 위한 로그 추가
+        Log.d("ACRCloudRequest", "파일 경로: $audioFile")
+        Log.d("ACRCloudRequest", "파일 크기: ${file.length()} bytes")
+        Log.d("ACRCloudRequest", "파일 이름: ${file.name}")
+
+        RetrofitClient.instance.identifySong(accessKeyPart, audioPart)
             .enqueue(object : Callback<ResponseBody> {
                 override fun onResponse(call: Call<ResponseBody>, response: Response<ResponseBody>) {
                     if (response.isSuccessful) {
@@ -134,6 +122,8 @@ class MainActivity : AppCompatActivity() {
                         Log.d("ACRCloudResponse", "API Response: $responseData")
                     } else {
                         Log.e("ACRCloudResponse", "API Error: ${response.code()} - ${response.message()}")
+                        val errorBody = response.errorBody()?.string()
+                        Log.e("ACRCloudError", "Error Body: $errorBody")
                     }
                 }
 

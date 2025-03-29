@@ -9,7 +9,7 @@ object RetrofitClient {
     val instance: ACRCloudApi by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create()) // JSON 변환기 추가
             .build()
             .create(ACRCloudApi::class.java)
     }
