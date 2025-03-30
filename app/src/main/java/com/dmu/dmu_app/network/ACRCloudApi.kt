@@ -10,7 +10,12 @@ interface ACRCloudApi {
     @Multipart
     @POST("v1/identify")
     fun identifySong(
-        @Part accessKey: MultipartBody.Part,  // 수정됨!
-        @Part audio: MultipartBody.Part
+        @Part accessKey: MultipartBody.Part,
+        @Part timestamp: MultipartBody.Part,
+        @Part signature: MultipartBody.Part,
+        @Part signatureVersion: MultipartBody.Part,
+        @Part dataType: MultipartBody.Part,
+        @Part sampleBytes: MultipartBody.Part,
+        @Part audioFile: MultipartBody.Part
     ): Call<ResponseBody>
-}
+    }
