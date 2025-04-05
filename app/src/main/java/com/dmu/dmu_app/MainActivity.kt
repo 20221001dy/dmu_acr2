@@ -1,6 +1,7 @@
 package com.dmu.dmu_app
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.MediaRecorder
 import android.os.Build
@@ -11,6 +12,7 @@ import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.dmu.dmu_app.model.SongInfo
 import com.dmu.dmu_app.network.RetrofitClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -18,6 +20,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.ResponseBody
+import org.json.JSONObject
 import retrofit2.HttpException
 import java.io.File
 import java.io.IOException
@@ -32,7 +35,7 @@ class MainActivity : AppCompatActivity() {
 
     private val REQUEST_PERMISSION_CODE = 1
     private val accessKey = "8b115fcf9f2a03cec7a2d3e7916aeed1"
-    private val accessSecret ="Poxw8zt1NoiTHDAM8zShvuXZ9Vn4Aq4doaUZVvHB"
+    private val accessSecret = "Poxw8zt1NoiTHDAM8zShvuXZ9Vn4Aq4doaUZVvHB"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,10 +62,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_PERMISSION_CODE && grantResults.isNotEmpty() && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, "토스트: 마이크 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "마이크 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -124,12 +131,58 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val response = RetrofitClient.instance.identifySong(
-                    accessKeyPart, timestampPart, signaturePart, signatureVersionPart, dataTypePart, sampleBytesPart, audioPart
+                    accessKeyPart,
+                    timestampPart,
+                    signaturePart,
+                    signatureVersionPart,
+                    dataTypePart,
+                    sampleBytesPart,
+                    audioPart
                 ).execute()
 
                 if (response.isSuccessful) {
                     val responseData = response.body()?.string()
                     Log.d("ACRCloudResponse", "API Response: $responseData")
+
+                    val json = JSONObject(responseData ?: "")
+                    if (json.has("metadata")) {
+                        val metadata = json.getJSONObject("metadata")
+                        val hummingArray = metadata.optJSONArray("humming") ?: return@launch
+
+                        if (hummingArray.length() > 0) {
+                            val song = hummingArray.getJSONObject(0)
+
+                            val title = song.optString("title", "Unknown")
+                            val artistsArray = song.optJSONArray("artists")
+                            val artists = if (artistsArray != null && artistsArray.length() > 0) {
+                                artistsArray.getJSONObject(0).optString("name", "Unknown")
+                            } else {
+                                "Unknown"
+                            }
+                            val album = song.optJSONObject("album")?.optString("name", "Unknown")
+                            val label = song.optString("label", "Unknown")
+                            val releaseDate = song.optString("release_date", "Unknown")
+
+                            val songInfo = SongInfo(
+                                title = title,
+                                artists = artists,
+                                album = album,
+                                label = label,
+                                releaseDate = releaseDate
+                            )
+
+                            // 화면 전환
+                            launch(Dispatchers.Main) {
+                                val intent = Intent(this@MainActivity, ResultActivity::class.java)
+                                intent.putExtra("songInfo", songInfo)
+                                startActivity(intent)
+                            }
+                        } else {
+                            Log.e("ACRCloudResponse", "No songs found in metadata.")
+                        }
+                    } else {
+                        Log.e("ACRCloudResponse", "No metadata found in response.")
+                    }
                 } else {
                     Log.e("ACRCloudResponse", "API Error: ${response.code()} - ${response.message()}")
                     val errorBody = response.errorBody()?.string()
@@ -139,10 +192,13 @@ class MainActivity : AppCompatActivity() {
                 Log.e("ACRCloudResponse", "HTTP Exception: ${e.message}")
             } catch (e: IOException) {
                 Log.e("ACRCloudResponse", "Network Error: ${e.message}")
+            } catch (e: Exception) {
+                Log.e("ACRCloudResponse", "Unexpected Error: ${e.message}")
             }
         }
     }
 
+    // ✅ 서명 생성 함수 (반드시 필요)
     private fun generateSignature(secret: String, timestamp: String, signatureVersion: String): String {
         val method = "POST"
         val httpUri = "/v1/identify"
