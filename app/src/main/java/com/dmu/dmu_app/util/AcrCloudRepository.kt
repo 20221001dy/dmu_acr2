@@ -1,0 +1,92 @@
+package com.dmu.dmu_app.repository
+
+import android.content.Context
+import android.content.Intent
+import android.util.Log
+import com.dmu.dmu_app.ResultActivity
+import com.dmu.dmu_app.model.SongInfo
+import com.dmu.dmu_app.network.RetrofitClient
+import com.dmu.dmu_app.util.SignatureUtil
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import org.json.JSONObject
+import java.io.File
+
+object AcrCloudRepository {
+
+    fun identifySongFromFile(
+        context: Context,
+        audioFile: File,
+        accessKey: String,
+        accessSecret: String
+    ) {
+        val timestamp = (System.currentTimeMillis() / 1000).toString()
+        val signatureVersion = "1"
+        val dataType = "audio"
+        val sampleBytes = audioFile.length().toString()
+        val signature = SignatureUtil.generateSignature(
+            accessKey = accessKey,
+            accessSecret = accessSecret,
+            timestamp = timestamp,
+            signatureVersion = signatureVersion
+        )
+
+        val requestFile = audioFile.asRequestBody("audio/amr".toMediaType())
+        val audioPart = MultipartBody.Part.createFormData("sample", audioFile.name, requestFile)
+        val accessKeyPart = MultipartBody.Part.createFormData("access_key", accessKey)
+        val timestampPart = MultipartBody.Part.createFormData("timestamp", timestamp)
+        val signaturePart = MultipartBody.Part.createFormData("signature", signature)
+        val signatureVersionPart = MultipartBody.Part.createFormData("signature_version", signatureVersion)
+        val dataTypePart = MultipartBody.Part.createFormData("data_type", dataType)
+        val sampleBytesPart = MultipartBody.Part.createFormData("sample_bytes", sampleBytes)
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = RetrofitClient.instance.identifySong(
+                    accessKeyPart, timestampPart, signaturePart,
+                    signatureVersionPart, dataTypePart, sampleBytesPart, audioPart
+                ).execute()
+
+                if (response.isSuccessful) {
+                    val responseData = response.body()?.string()
+                    Log.d("AcrCloudRepository", "API Response: $responseData")
+
+                    val json = JSONObject(responseData ?: "")
+                    if (json.has("metadata")) {
+                        val metadata = json.getJSONObject("metadata")
+                        val hummingArray = metadata.optJSONArray("humming") ?: return@launch
+                        if (hummingArray.length() > 0) {
+                            val song = hummingArray.getJSONObject(0)
+                            val title = song.optString("title", "Unknown")
+                            val artistsArray = song.optJSONArray("artists")
+                            val artists = if (artistsArray != null && artistsArray.length() > 0) {
+                                artistsArray.getJSONObject(0).optString("name", "Unknown")
+                            } else "Unknown"
+                            val album = song.optJSONObject("album")?.optString("name", "Unknown")
+                            val label = song.optString("label", "Unknown")
+                            val releaseDate = song.optString("release_date", "Unknown")
+
+                            val songInfo = SongInfo(title, artists, album, label, releaseDate)
+
+                            CoroutineScope(Dispatchers.Main).launch {
+                                val intent = Intent(context, ResultActivity::class.java)
+                                intent.putExtra("songInfo", songInfo)
+                                context.startActivity(intent)
+                            }
+                        }
+                    } else {
+                        Log.e("AcrCloudRepository", "No metadata found.")
+                    }
+                } else {
+                    Log.e("AcrCloudRepository", "API Error: ${response.code()} - ${response.message()}")
+                }
+            } catch (e: Exception) {
+                Log.e("AcrCloudRepository", "Error: ${e.message}")
+            }
+        }
+    }
+}
