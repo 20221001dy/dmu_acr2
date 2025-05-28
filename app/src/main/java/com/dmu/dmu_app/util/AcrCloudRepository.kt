@@ -1,11 +1,13 @@
-package com.dmu.dmu_app.repository
+package com.dmu.dmu_app.util
 
 import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.dmu.dmu_app.ResultActivity
 import com.dmu.dmu_app.model.SongInfo
+import com.dmu.dmu_app.model.AcrModel
 import com.dmu.dmu_app.network.RetrofitClient
+import com.dmu.dmu_app.network.SupabaseClient
 import com.dmu.dmu_app.util.SignatureUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -71,6 +73,30 @@ object AcrCloudRepository {
                             val releaseDate = song.optString("release_date", "Unknown")
 
                             val songInfo = SongInfo(title, artists, album, label, releaseDate)
+
+                            //  Supabase에 저장 추가
+                            val acrModel = AcrModel(
+                                acrid = "acr-${System.currentTimeMillis()}",
+                                acr_title = title,
+                                artists = artists,
+                                album = album,
+                                label = label,
+                                release_date = releaseDate,
+                                score = 0.98
+                            )
+
+                            launch(Dispatchers.IO) {
+                                try {
+                                    val supabaseResponse = SupabaseClient.instance.postAcr(acrModel)
+                                    if (supabaseResponse.isSuccessful) {
+                                        Log.d("Supabase", " Supabase 저장 성공")
+                                    } else {
+                                        Log.e("Supabase", " 저장 실패: ${supabaseResponse.code()}")
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("Supabase", " 예외 발생: ${e.message}")
+                                }
+                            }
 
                             CoroutineScope(Dispatchers.Main).launch {
                                 val intent = Intent(context, ResultActivity::class.java)
