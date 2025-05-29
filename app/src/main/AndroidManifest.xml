@@ -32,7 +32,8 @@
         <activity android:name=".LoginActivity" />
         <activity android:name=".SignupActivity" />
         <activity android:name=".ResultActivity" />
-        <activity android:name=".SignupActivity" />
+        <activity android:name=".SignupActivity"
+            tools:ignore="DuplicateActivity" />
     </application>
 
 </manifest>

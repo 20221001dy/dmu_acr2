@@ -9,12 +9,13 @@ import android.os.Bundle
 import android.view.MenuItem
 import android.widget.Button
 import android.widget.Toast
-import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import com.dmu.dmu_app.util.AcrCloudRepository
+import com.dmu.dmu_app.util.AuthManager
+import com.dmu.dmu_app.ui.helper.NavigationDrawerHelper
 import com.google.android.material.navigation.NavigationView
 import java.io.File
 import java.io.IOException
@@ -24,9 +25,9 @@ class MainActivity : AppCompatActivity() {
     private var isRecording = false
     private var outputFile: String? = null
     private lateinit var btnRecord: Button
-
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navView: NavigationView
+    private lateinit var toolbar: Toolbar
 
     private val REQUEST_PERMISSION_CODE = 1
     private val accessKey = "8b115fcf9f2a03cec7a2d3e7916aeed1"
@@ -36,43 +37,30 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // ✅ 툴바 연결
-        val toolbar = findViewById<Toolbar>(R.id.toolbar)
-        setSupportActionBar(toolbar)
-
-        // ✅ Drawer 설정
+        // UI 컴포넌트 연결
+        toolbar = findViewById(R.id.toolbar)
         drawerLayout = findViewById(R.id.drawer_layout)
         navView = findViewById(R.id.nav_view)
-        val toggle = ActionBarDrawerToggle(this, drawerLayout, toolbar, R.string.app_name, R.string.app_name)
-        drawerLayout.addDrawerListener(toggle)
-        toggle.syncState()
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-
-        // ✅ 메뉴 클릭 처리
-        navView.setNavigationItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.nav_login -> {
-                    startActivity(Intent(this, LoginActivity::class.java))
-                    true
-                }
-                R.id.nav_signup -> {
-                    startActivity(Intent(this, SignupActivity::class.java))
-                    true
-                }
-                else -> false
-            }
-        }
-
-        // ✅ 녹음 버튼
         btnRecord = findViewById(R.id.btnRecord)
+
+        // Navigation Drawer 초기화
+        NavigationDrawerHelper.setup(this, drawerLayout, navView, toolbar)
+
+        // 권한 확인 및 녹음 버튼 설정
         checkPermissions()
 
         btnRecord.setOnClickListener {
+            val isLoggedIn = AuthManager.isLoggedIn(this)
+            if (!isLoggedIn) {
+                Toast.makeText(this, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+                startActivity(Intent(this, LoginActivity::class.java))
+                return@setOnClickListener
+            }
+
             if (isRecording) stopRecording() else startRecording()
         }
     }
 
-    // ✅ 햄버거 메뉴 동작
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == android.R.id.home) {
             drawerLayout.openDrawer(GravityCompat.START)
@@ -99,7 +87,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startRecording() {
-        outputFile = "${externalCacheDir?.absolutePath}/audio_record.amr"
+        val cacheDir = externalCacheDir ?: cacheDir
+        val audioFile = File(cacheDir, "audio_record.amr")
+
+        // ✅ 디렉토리 없으면 생성
+        if (!audioFile.parentFile.exists()) {
+            audioFile.parentFile.mkdirs()
+        }
+
+        outputFile = audioFile.absolutePath
+
         mediaRecorder = MediaRecorder().apply {
             setAudioSource(MediaRecorder.AudioSource.MIC)
             setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)

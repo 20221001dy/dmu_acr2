@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -51,10 +53,16 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.2.1")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.0.21")
     implementation(libs.play.services.base)
+    implementation(libs.firebase.auth.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
+
+    implementation(platform("com.google.firebase:firebase-bom:33.14.0"))
+
+    // Google 로그인 SDK
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
 
 
 }

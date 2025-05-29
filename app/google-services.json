@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1001635044043",
+    "project_id": "dmusoundapp",
+    "storage_bucket": "dmusoundapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1001635044043:android:20d53f0160181b0f0bd94e",
+        "android_client_info": {
+          "package_name": "com.dmu.dmu_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1001635044043-tr6jjtbmhv0shkve00q76nt5cte9pchf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dmu.dmu_app",
+            "certificate_hash": "6892b9d562ad2b2c8d06c14eb89a80b0bc90cd42"
+          }
+        },
+        {
+          "client_id": "1001635044043-db9tsrkcg6nde5511t570emjh78nnbku.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCB7GG2vrvJ2i840uZ8D_BPW38fJCQO6W8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1001635044043-db9tsrkcg6nde5511t570emjh78nnbku.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

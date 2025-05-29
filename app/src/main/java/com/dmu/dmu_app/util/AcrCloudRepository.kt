@@ -17,6 +17,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import org.json.JSONObject
 import java.io.File
+import java.util.UUID
 
 object AcrCloudRepository {
 
@@ -72,32 +73,44 @@ object AcrCloudRepository {
                             val label = song.optString("label", "Unknown")
                             val releaseDate = song.optString("release_date", "Unknown")
 
-                            val songInfo = SongInfo(title, artists, album, label, releaseDate)
+                            // 로그인 유저 정보 확인
+                            val prefs = context.getSharedPreferences("auth", Context.MODE_PRIVATE)
+                            val usercode = prefs.getInt("usercode", -1)
 
-                            //  Supabase에 저장 추가
-                            val acrModel = AcrModel(
-                                acrid = "acr-${System.currentTimeMillis()}",
-                                acr_title = title,
-                                artists = artists,
-                                album = album,
-                                label = label,
-                                release_date = releaseDate,
-                                score = 0.98
-                            )
+                            // ✅ 로그인 안 된 경우 저장하지 않고 로그만 출력
+                            if (usercode == -1) {
+                                Log.e("Supabase", "로그인 안 되어 있어 Supabase 저장 중단됨")
+                            } else {
+                                val acrModel = AcrModel(
+                                    acrid = UUID.randomUUID().toString(),
+                                    acr_title = title,
+                                    artists = artists,
+                                    album = album,
+                                    label = label,
+                                    release_date = releaseDate,
+                                    score = 0.98,
+                                    usercode = usercode
+                                )
 
-                            launch(Dispatchers.IO) {
-                                try {
-                                    val supabaseResponse = SupabaseClient.instance.postAcr(acrModel)
-                                    if (supabaseResponse.isSuccessful) {
-                                        Log.d("Supabase", " Supabase 저장 성공")
-                                    } else {
-                                        Log.e("Supabase", " 저장 실패: ${supabaseResponse.code()}")
+                                Log.d("Supabase", "보내는 AcrModel: $acrModel")
+
+                                launch(Dispatchers.IO) {
+                                    try {
+                                        val supabaseResponse = SupabaseClient.instance.postAcr(acrModel)
+                                        if (supabaseResponse.isSuccessful) {
+                                            Log.d("Supabase", " Supabase 저장 성공")
+                                        } else {
+                                            Log.e("Supabase", " 저장 실패: ${supabaseResponse.code()}")
+                                            Log.e("Supabase", "Body: ${supabaseResponse.errorBody()?.string()}")
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e("Supabase", " 예외 발생: ${e.message}")
                                     }
-                                } catch (e: Exception) {
-                                    Log.e("Supabase", " 예외 발생: ${e.message}")
                                 }
                             }
 
+                            // 곡 정보 화면에 넘기기
+                            val songInfo = SongInfo(title, artists, album, label, releaseDate)
                             CoroutineScope(Dispatchers.Main).launch {
                                 val intent = Intent(context, ResultActivity::class.java)
                                 intent.putExtra("songInfo", songInfo)

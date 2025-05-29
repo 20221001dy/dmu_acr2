@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/login_drawer_layout"
+    android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".LoginActivity">
+    android:layout_height="match_parent">
 
-    <!-- 메인 화면 -->
     <LinearLayout
         android:orientation="vertical"
         android:layout_width="match_parent"
@@ -16,30 +14,32 @@
 
         <!-- 툴바 -->
         <androidx.appcompat.widget.Toolbar
-            android:id="@+id/login_toolbar"
+            android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="?attr/colorPrimary"
             app:title="로그인"
             app:titleTextColor="@android:color/white" />
 
-        <!-- 로그인 입력 UI -->
+        <!-- 이메일 입력 -->
         <EditText
-            android:id="@+id/editEmail"
+            android:id="@+id/editLoginEmail"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="이메일"
             android:inputType="textEmailAddress"
             android:layout_marginTop="20dp" />
 
+        <!-- 비밀번호 입력 -->
         <EditText
-            android:id="@+id/editPassword"
+            android:id="@+id/editLoginPassword"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="비밀번호"
             android:inputType="textPassword"
             android:layout_marginTop="12dp" />
 
+        <!-- 일반 로그인 버튼 -->
         <Button
             android:id="@+id/btnLogin"
             android:layout_width="match_parent"
@@ -47,27 +47,20 @@
             android:text="로그인"
             android:layout_marginTop="24dp" />
 
+        <!-- Google 로그인 버튼 -->
         <Button
-            android:id="@+id/btnGoToSignup"
+            android:id="@+id/btnGoogleLogin"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="회원가입 화면으로"
+            android:text="Google 로그인"
             android:layout_marginTop="12dp" />
-
-        <com.google.android.gms.common.SignInButton
-            android:id="@+id/btnGoogleSignIn"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="32dp" />
-
     </LinearLayout>
 
-    <!-- 좌측 Drawer 메뉴 -->
+    <!-- 햄버거 메뉴 -->
     <com.google.android.material.navigation.NavigationView
-        android:id="@+id/login_nav_view"
+        android:id="@+id/nav_view"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_gravity="start"
         app:menu="@menu/drawer_menu" />
-
 </androidx.drawerlayout.widget.DrawerLayout>
