@@ -64,5 +64,7 @@ dependencies {
     // Google 로그인 SDK
     implementation("com.google.android.gms:play-services-auth:21.0.0")
 
+    implementation ("org.mindrot:jbcrypt:0.4")
+
 
 }

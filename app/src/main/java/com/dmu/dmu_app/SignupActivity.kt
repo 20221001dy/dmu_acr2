@@ -16,6 +16,8 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import com.google.android.material.navigation.NavigationView
+import org.mindrot.jbcrypt.BCrypt
+
 
 class SignupActivity : AppCompatActivity() {
 
@@ -56,15 +58,17 @@ class SignupActivity : AppCompatActivity() {
             val password = editPassword.text.toString()
             val name = editName.text.toString()
 
+            val hashedPw = BCrypt.hashpw(password, BCrypt.gensalt())
+
             if (email.isNotBlank() && password.isNotBlank() && name.isNotBlank()) {
-                signup(email, password, name)
+                signup(email, hashedPw, name)
             } else {
                 Toast.makeText(this, "모든 항목을 입력해주세요.", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    private fun signup(email: String, password: String, name: String) {
+        private fun signup(email: String, password: String, name: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val client = OkHttpClient()

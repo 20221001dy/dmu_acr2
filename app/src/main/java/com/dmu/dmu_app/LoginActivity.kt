@@ -13,10 +13,8 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.*
-import okhttp3.*
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONObject
+import org.mindrot.jbcrypt.BCrypt
+import com.google.android.material.navigation.NavigationView
 
 class LoginActivity : AppCompatActivity() {
 
@@ -39,30 +37,58 @@ class LoginActivity : AppCompatActivity() {
         btnLogin = findViewById(R.id.btnLogin)
         btnGoogleLogin = findViewById(R.id.btnGoogleLogin)
 
-        // 이메일 로그인
+        // ✅ 이메일+비밀번호 로그인
         btnLogin.setOnClickListener {
             val userId = editEmail.text.toString()
-            if (userId.isNotBlank()) {
+            val inputPw = editPassword.text.toString()
+
+            if (userId.isNotBlank() && inputPw.isNotBlank()) {
                 CoroutineScope(Dispatchers.IO).launch {
-                    val success = AuthManager.loginWithUserId(this@LoginActivity, userId)
-                    withContext(Dispatchers.Main) {
-                        if (success) {
-                            Toast.makeText(this@LoginActivity, "로그인 성공", Toast.LENGTH_SHORT).show()
-                            startActivity(Intent(this@LoginActivity, MainActivity::class.java))
-                            finish()
+                    try {
+                        val response = SupabaseClient.instance.getUserByUserId("eq.$userId")
+                        if (response.isSuccessful) {
+                            val userList = response.body()
+                            if (!userList.isNullOrEmpty()) {
+                                val user = userList[0]
+                                val hashedPw = user.userpw
+                                val match = BCrypt.checkpw(inputPw, hashedPw)
+
+                                withContext(Dispatchers.Main) {
+                                    if (match) {
+                                        // ✅ 로그인 정보 저장
+                                        AuthManager.login(this@LoginActivity, user.userId, user.username, user.usercode)
+
+                                        Toast.makeText(this@LoginActivity, "로그인 성공", Toast.LENGTH_SHORT).show()
+                                        startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                                        finish()
+                                    } else {
+                                        Toast.makeText(this@LoginActivity, "❌ 비밀번호 불일치", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            } else {
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(this@LoginActivity, "❌ 해당 사용자가 없습니다", Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         } else {
-                            Toast.makeText(this@LoginActivity, "로그인 실패: 사용자 없음", Toast.LENGTH_SHORT).show()
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(this@LoginActivity, "서버 오류: ${response.code()}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(this@LoginActivity, "오류 발생: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
             } else {
-                Toast.makeText(this, "아이디를 입력해주세요", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "아이디와 비밀번호를 모두 입력해주세요", Toast.LENGTH_SHORT).show()
             }
         }
 
-        // 구글 로그인
+        // ✅ 구글 로그인
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(getString(R.string.default_web_client_id)) // firebase 콘솔에서 확인
+            .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
 
@@ -99,8 +125,6 @@ class LoginActivity : AppCompatActivity() {
                     val name = user?.displayName ?: "이름없음"
                     val googleKey = user?.uid ?: ""
 
-                    Log.d("GoogleLogin", "✅ 구글 인증 성공 → uid: $googleKey, email: $email, name: $name")
-
                     CoroutineScope(Dispatchers.IO).launch {
                         try {
                             val response = SupabaseClient.instance.getUserByGoogleKey("eq.$googleKey")
@@ -108,11 +132,7 @@ class LoginActivity : AppCompatActivity() {
                                 val userList = response.body()
                                 if (!userList.isNullOrEmpty()) {
                                     val user = userList[0]
-
-                                    Log.d("GoogleLogin", "✅ 기존 유저 로그인")
-
                                     withContext(Dispatchers.Main) {
-                                        // ✅ usercode 추가
                                         AuthManager.login(this@LoginActivity, googleKey, name, user.usercode)
                                         Toast.makeText(this@LoginActivity, "구글 로그인 성공!", Toast.LENGTH_SHORT).show()
                                         startActivity(Intent(this@LoginActivity, MainActivity::class.java))
@@ -120,23 +140,20 @@ class LoginActivity : AppCompatActivity() {
                                     }
                                 } else {
                                     Log.d("GoogleLogin", "❌ 유저 없음 - 회원가입 필요")
-                                    // 필요 시 신규 유저 insert 로직 수행
+                                    // 신규 유저 등록 로직 추가 가능
                                 }
                             } else {
                                 Log.e("GoogleLogin", "⛔ 오류 코드: ${response.code()}")
                             }
                         } catch (e: Exception) {
                             withContext(Dispatchers.Main) {
-                                Log.e("GoogleLogin", "⛔ 예외 발생: ${e.message}")
                                 Toast.makeText(this@LoginActivity, "Supabase 연동 오류: ${e.message}", Toast.LENGTH_LONG).show()
                             }
                         }
                     }
-
                 } else {
                     Toast.makeText(this, "파이어베이스 인증 실패", Toast.LENGTH_SHORT).show()
                 }
             }
     }
-
 }
