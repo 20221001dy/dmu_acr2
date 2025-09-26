@@ -3,7 +3,6 @@ package com.dmu.dmu_app
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.MediaRecorder
 import android.os.Build
 import android.os.Bundle
 import android.view.MenuItem
@@ -13,23 +12,22 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
-import com.dmu.dmu_app.util.AcrCloudRepository
-import com.dmu.dmu_app.util.AuthManager
 import com.dmu.dmu_app.ui.helper.NavigationDrawerHelper
+import com.dmu.dmu_app.util.AcrCloudRepository
+import com.dmu.dmu_app.util.AudioRecorder
+import com.dmu.dmu_app.util.AuthManager
+import com.dmu.dmu_app.util.RecordingListener
 import com.google.android.material.navigation.NavigationView
 import java.io.File
-import java.io.IOException
 
-class MainActivity : AppCompatActivity() {
-    private var mediaRecorder: MediaRecorder? = null
-    private var isRecording = false
-    private var outputFile: String? = null
+class MainActivity : AppCompatActivity(), RecordingListener {
     private lateinit var btnRecord: Button
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navView: NavigationView
     private lateinit var toolbar: Toolbar
 
-    private val REQUEST_PERMISSION_CODE = 1
+    private lateinit var audioRecorder: AudioRecorder
+
     private val accessKey = "8b115fcf9f2a03cec7a2d3e7916aeed1"
     private val accessSecret = "Poxw8zt1NoiTHDAM8zShvuXZ9Vn4Aq4doaUZVvHB"
 
@@ -37,28 +35,51 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // UI 컴포넌트 연결
+        audioRecorder = AudioRecorder(this)
+
         toolbar = findViewById(R.id.toolbar)
         drawerLayout = findViewById(R.id.drawer_layout)
         navView = findViewById(R.id.nav_view)
         btnRecord = findViewById(R.id.btnRecord)
 
-        // Navigation Drawer 초기화
         NavigationDrawerHelper.setup(this, drawerLayout, navView, toolbar)
-
-        // 권한 확인 및 녹음 버튼 설정
         checkPermissions()
 
         btnRecord.setOnClickListener {
-            val isLoggedIn = AuthManager.isLoggedIn(this)
-            if (!isLoggedIn) {
+            if (!AuthManager.isLoggedIn(this)) {
                 Toast.makeText(this, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
                 startActivity(Intent(this, LoginActivity::class.java))
                 return@setOnClickListener
             }
 
-            if (isRecording) stopRecording() else startRecording()
+            if (audioRecorder.isRecording) {
+                audioRecorder.stop(this)
+            } else {
+                audioRecorder.start(this)
+            }
+            updateRecordButtonUI()
         }
+    }
+
+    private fun updateRecordButtonUI() {
+        btnRecord.text = if (audioRecorder.isRecording) "녹음 중지" else "녹음 시작"
+    }
+
+    override fun onRecordingFinished(file: File) {
+        Toast.makeText(this, "녹음 완료! 노래를 찾고 있습니다...", Toast.LENGTH_SHORT).show()
+        updateRecordButtonUI()
+
+        AcrCloudRepository.identifySongFromFile(
+            context = this,
+            audioFile = file,
+            accessKey = accessKey,
+            accessSecret = accessSecret
+        )
+    }
+
+    override fun onRecordingFailed(exception: Exception) {
+        Toast.makeText(this, "녹음에 실패했습니다: ${exception.message}", Toast.LENGTH_SHORT).show()
+        updateRecordButtonUI()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -86,53 +107,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startRecording() {
-        val cacheDir = externalCacheDir ?: cacheDir
-        val audioFile = File(cacheDir, "audio_record.amr")
-
-        // ✅ 디렉토리 없으면 생성
-        if (!audioFile.parentFile.exists()) {
-            audioFile.parentFile.mkdirs()
-        }
-
-        outputFile = audioFile.absolutePath
-
-        mediaRecorder = MediaRecorder().apply {
-            setAudioSource(MediaRecorder.AudioSource.MIC)
-            setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
-            setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
-            setOutputFile(outputFile)
-            try {
-                prepare()
-                start()
-            } catch (e: IOException) {
-                e.printStackTrace()
-            }
-        }
-        isRecording = true
-        btnRecord.text = "녹음 중지"
-    }
-
-    private fun stopRecording() {
-        try {
-            mediaRecorder?.stop()
-        } catch (e: IllegalStateException) {
-            e.printStackTrace()
-        } finally {
-            mediaRecorder?.release()
-            mediaRecorder = null
-        }
-        isRecording = false
-        btnRecord.text = "녹음 시작"
-
-        outputFile?.let {
-            val file = File(it)
-            AcrCloudRepository.identifySongFromFile(
-                context = this,
-                audioFile = file,
-                accessKey = accessKey,
-                accessSecret = accessSecret
-            )
-        }
+    companion object {
+        private const val REQUEST_PERMISSION_CODE = 1
     }
 }
