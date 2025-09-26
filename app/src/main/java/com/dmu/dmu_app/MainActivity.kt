@@ -1,9 +1,7 @@
 package com.dmu.dmu_app
 
-import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.view.MenuItem
 import android.widget.Button
@@ -13,10 +11,7 @@ import androidx.appcompat.widget.Toolbar
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import com.dmu.dmu_app.ui.helper.NavigationDrawerHelper
-import com.dmu.dmu_app.util.AcrCloudRepository
-import com.dmu.dmu_app.util.AudioRecorder
-import com.dmu.dmu_app.util.AuthManager
-import com.dmu.dmu_app.util.RecordingListener
+import com.dmu.dmu_app.util.*
 import com.google.android.material.navigation.NavigationView
 import java.io.File
 
@@ -43,7 +38,7 @@ class MainActivity : AppCompatActivity(), RecordingListener {
         btnRecord = findViewById(R.id.btnRecord)
 
         NavigationDrawerHelper.setup(this, drawerLayout, navView, toolbar)
-        checkPermissions()
+        PermissionManager.checkAndRequestAudioPermission(this)
 
         btnRecord.setOnClickListener {
             if (!AuthManager.isLoggedIn(this)) {
@@ -90,24 +85,12 @@ class MainActivity : AppCompatActivity(), RecordingListener {
         return super.onOptionsItemSelected(item)
     }
 
-    private fun checkPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-            checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_PERMISSION_CODE)
-        }
-    }
-
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_PERMISSION_CODE && grantResults.isNotEmpty() &&
+        if (requestCode == PermissionManager.REQUEST_CODE && grantResults.isNotEmpty() &&
             grantResults[0] != PackageManager.PERMISSION_GRANTED
         ) {
             Toast.makeText(this, "마이크 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
         }
-    }
-
-    companion object {
-        private const val REQUEST_PERMISSION_CODE = 1
     }
 }
