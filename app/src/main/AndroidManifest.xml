@@ -34,6 +34,8 @@
         <activity android:name=".ResultActivity" />
         <activity android:name=".SignupActivity"
             tools:ignore="DuplicateActivity" />
+        <activity android:name=".MyPageActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

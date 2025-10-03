@@ -56,6 +56,11 @@ object NavigationDrawerHelper {
                     drawerLayout.closeDrawer(GravityCompat.START)
                     true
                 }
+                // ✅ '마이페이지' 클릭 시 동작 추가
+                R.id.nav_mypage -> {
+                    activity.startActivity(Intent(activity, MyPageActivity::class.java))
+                    true
+                }
                 else -> false
             }
         }
@@ -79,5 +84,8 @@ object NavigationDrawerHelper {
         menu.findItem(R.id.nav_login)?.isVisible = !loggedIn
         menu.findItem(R.id.nav_signup)?.isVisible = !loggedIn
         menu.findItem(R.id.nav_logout)?.isVisible = loggedIn
+
+        // ✅ 로그인 상태일 때만 '마이페이지' 메뉴가 보이도록 설정
+        menu.findItem(R.id.nav_mypage)?.isVisible = loggedIn
     }
 }
